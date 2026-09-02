@@ -36,14 +36,33 @@ public struct SettingsView<Model: SettingsViewModel>: View {
             }
             if model.showsCodexExecutablePath {
                 TextField("Codex executable path", text: codexExecutablePath)
-                Text("Enter an absolute path such as /opt/homebrew/bin/codex. Run codex login in Terminal first.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                codexSetupGuide
             }
             Text("Only text extracted from the page range you choose is sent to the selected AI provider.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var codexSetupGuide: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("How to find this path")
+                .font(.headline)
+            Text("1. Open Terminal from Applications > Utilities.")
+            Text("2. Enter this command and press Return:")
+            Text("which codex")
+                .font(.system(.body, design: .monospaced))
+                .textSelection(.enabled)
+            Text("3. Copy the result and paste it above. It should look like:")
+            Text("/opt/homebrew/bin/codex")
+                .font(.system(.body, design: .monospaced))
+                .textSelection(.enabled)
+            Text("If nothing is shown, install Codex CLI first. On first use, run codex login in Terminal.")
+                .foregroundStyle(.secondary)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.vertical, 4)
     }
 
     private var selectedAppearanceIdentifier: Binding<String> {
