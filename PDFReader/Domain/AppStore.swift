@@ -30,6 +30,7 @@ final class AppStore: Store<AppState> {
         self.pdfAnswerConfigurationRepository = pdfAnswerConfigurationRepository
         self.pdfPageContentExtractor = pdfPageContentExtractor
         self.appleFoundationModelPDFAnswerGenerator = pdfAnswerGenerator
+        pdfFileStorageService.migrateLegacyStoredFiles()
         let pdfAnswerProvider: PDFAnswerProvider = pdfAnswerConfigurationRepository.loadPDFAnswerProvider()
         let codexExecutablePath: String = pdfAnswerConfigurationRepository.loadCodexExecutablePath()
         let selectedPDFAnswerGenerator: any PDFAnswerGenerating
@@ -79,6 +80,7 @@ final class AppStore: Store<AppState> {
         setState { appState in
             appState.selectedPDFFileIdentifier = identifier
             appState.selectedPDFFileURL = fileURL
+            appState.isSelectedPDFFileMissing = fileURL == nil
             appState.isAllHighlightsRemovalPending = false
             appState.pdfInquiryEntries = []
             appState.pdfInquiryPhase = .idle
@@ -93,6 +95,7 @@ final class AppStore: Store<AppState> {
         setState { appState in
             appState.selectedPDFFileIdentifier = nil
             appState.selectedPDFFileURL = nil
+            appState.isSelectedPDFFileMissing = false
             appState.pdfInquiryRequestIdentifier = nil
             appState.isAllHighlightsRemovalPending = false
             appState.pdfInquiryEntries = []
@@ -166,7 +169,7 @@ final class AppStore: Store<AppState> {
     }
 
     // WHY: document questions are accepted only through the store so extraction and generation share one state lifecycle.
-    func answerPDFQuestion(_ question: String, pageRange: PDFPageRange) {
+    func answerPDFQuestion(_ question: String, pageRange: PDFPageRange?) {
         let normalizedQuestion: String = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedQuestion.isEmpty else { return }
         startPDFInquiry(question: normalizedQuestion, pageRange: pageRange)
@@ -194,10 +197,11 @@ final class AppStore: Store<AppState> {
     }
 
     // WHY: every request starts from a validated selected document and replaces any superseded work.
-    private func startPDFInquiry(question: String, pageRange: PDFPageRange) {
-        guard let documentURL: URL = state.selectedPDFFileURL else { setPDFInquiryFailure(.documentUnavailable); return }
+    private func startPDFInquiry(question: String, pageRange: PDFPageRange?) {
+        let documentURL: URL? = state.selectedPDFFileURL
+        guard pageRange == nil || documentURL != nil else { setPDFInquiryFailure(.documentUnavailable); return }
         guard state.pdfInquiryAvailability == .available else { refreshPDFInquiryAvailability(); return }
-        guard isValidPDFPageRange(pageRange) else { setPDFInquiryFailure(.invalidPageRange); return }
+        guard isValidPDFPageRangeIfNeeded(pageRange) else { setPDFInquiryFailure(.invalidPageRange); return }
         cancelPDFInquiryTask()
         let pdfAnswerGenerator: any PDFAnswerGenerating = makeSelectedPDFAnswerGenerator()
         let requestIdentifier: UUID = UUID()
@@ -221,19 +225,16 @@ final class AppStore: Store<AppState> {
     // WHY: completion steps are serialized in one task so cancellation cannot append a partial answer.
     private func performPDFInquiry(
         question: String,
-        pageRange: PDFPageRange,
-        documentURL: URL,
+        pageRange: PDFPageRange?,
+        documentURL: URL?,
         requestIdentifier: UUID,
         pdfAnswerGenerator: any PDFAnswerGenerating
     ) async {
         do {
-            let pageContents: [PDFPageContent] = try pdfPageContentExtractor.extractPageContents(
-                documentURL: documentURL,
-                pageRange: pageRange
-            )
+            let pageContents: [PDFPageContent] = try extractPDFPageContents(pageRange: pageRange, documentURL: documentURL)
             try Task.checkCancellation()
             guard isCurrentPDFInquiry(requestIdentifier) else { return }
-            guard pageContents.contains(where: { !$0.text.isEmpty }) else {
+            guard pageRange == nil || pageContents.contains(where: { !$0.text.isEmpty }) else {
                 setPDFInquiryFailure(.noReadableText, requestIdentifier: requestIdentifier)
                 return
             }
@@ -261,8 +262,20 @@ final class AppStore: Store<AppState> {
         return pageRange.lowerPageIndex >= 0 && pageRange.upperPageIndex < pageCount && pageRange.lowerPageIndex <= pageRange.upperPageIndex
     }
 
+    // WHY: general questions intentionally bypass document validation because they do not need a selected page range.
+    private func isValidPDFPageRangeIfNeeded(_ pageRange: PDFPageRange?) -> Bool {
+        guard let pageRange else { return true }
+        return isValidPDFPageRange(pageRange)
+    }
+
+    // WHY: only page-scoped questions need extraction; general questions must reach the model without PDF evidence.
+    private func extractPDFPageContents(pageRange: PDFPageRange?, documentURL: URL?) throws -> [PDFPageContent] {
+        guard let pageRange, let documentURL else { return [] }
+        return try pdfPageContentExtractor.extractPageContents(documentURL: documentURL, pageRange: pageRange)
+    }
+
     // WHY: the request is recorded before work begins so its original scope remains auditable.
-    private func appendPDFInquiryQuestion(_ question: String, pageRange: PDFPageRange) {
+    private func appendPDFInquiryQuestion(_ question: String, pageRange: PDFPageRange?) {
         let entry: PDFInquiryEntry = PDFInquiryEntry(
             id: UUID(),
             author: .person,
@@ -276,10 +289,10 @@ final class AppStore: Store<AppState> {
     // WHY: citations outside the requested range are discarded before becoming trusted source indices.
     private func appendPDFInquiryResponse(
         _ response: PDFGeneratedResponse,
-        pageRange: PDFPageRange,
+        pageRange: PDFPageRange?,
         requestIdentifier: UUID
     ) {
-        let citedPageIndices: [Int] = response.citedPageIndices.filter(pageRange.pageIndices.contains)
+        let citedPageIndices: [Int] = pageRange.map { response.citedPageIndices.filter($0.pageIndices.contains) } ?? []
         let entry: PDFInquiryEntry = PDFInquiryEntry(
             id: UUID(),
             author: .model,
@@ -423,6 +436,7 @@ final class AppStore: Store<AppState> {
         guard appState.selectedPDFFileIdentifier == identifier else { return }
         appState.selectedPDFFileIdentifier = nil
         appState.selectedPDFFileURL = nil
+        appState.isSelectedPDFFileMissing = false
         appState.isAllHighlightsRemovalPending = false
         appState.pdfInquiryEntries = []
         appState.pdfInquiryPhase = .idle

@@ -3,11 +3,29 @@ import Foundation
 struct PDFFileStorageService {
     private let pdfSubdirectoryName = "PDFs"
 
-    private var storageFolderURL: URL? {
+    private var applicationSupportFolderURL: URL? {
         FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first?
+            .first
+    }
+
+    // WHY: an app-owned subdirectory keeps library files out of the shared Application Support root,
+    // where an unrelated cleanup tool can delete a bare "PDFs" folder it cannot attribute to this app.
+    private var storageFolderURL: URL? {
+        guard let applicationSupportFolderURL else { return nil }
+        return applicationSupportFolderURL
+            .appendingPathComponent(applicationStorageFolderName)
             .appendingPathComponent(pdfSubdirectoryName)
+    }
+
+    // WHY: files imported before the app-owned layout live one level higher and must still be found.
+    private var legacyStorageFolderURL: URL? {
+        applicationSupportFolderURL?.appendingPathComponent(pdfSubdirectoryName)
+    }
+
+    // WHY: the bundle identifier scopes storage to this app even when several apps share the domain folder.
+    private var applicationStorageFolderName: String {
+        Bundle.main.bundleIdentifier ?? "PDFReader"
     }
 
     // WHY: imported security-scoped files must be copied into app-owned storage for later access.
@@ -41,5 +59,39 @@ struct PDFFileStorageService {
     func deleteStoredFile(storedFileName: String) {
         guard let fileURL = resolveStoredFileURL(storedFileName: storedFileName) else { return }
         try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    // WHY: an existing library keeps opening its documents only if the old location is moved on first launch.
+    func migrateLegacyStoredFiles() {
+        guard let legacyFolderURL = legacyStorageFolderURL, let folderURL = storageFolderURL else { return }
+        guard FileManager.default.fileExists(atPath: legacyFolderURL.path) else { return }
+        do {
+            try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+            for legacyFileName in try FileManager.default.contentsOfDirectory(atPath: legacyFolderURL.path) {
+                moveLegacyStoredFile(named: legacyFileName, from: legacyFolderURL, to: folderURL)
+            }
+            removeLegacyStorageFolderIfEmpty(legacyFolderURL)
+        } catch {
+            print("[PDFFileStorageService] legacy migration failed: \(error)")
+        }
+    }
+
+    // WHY: a name already present in the new location is the authoritative copy and must not be overwritten.
+    private func moveLegacyStoredFile(named fileName: String, from legacyFolderURL: URL, to folderURL: URL) {
+        let destinationFileURL: URL = folderURL.appendingPathComponent(fileName)
+        guard !FileManager.default.fileExists(atPath: destinationFileURL.path) else { return }
+        do {
+            try FileManager.default.moveItem(at: legacyFolderURL.appendingPathComponent(fileName), to: destinationFileURL)
+            print("[PDFFileStorageService] migrated: \(destinationFileURL)")
+        } catch {
+            print("[PDFFileStorageService] migration of \(fileName) failed: \(error)")
+        }
+    }
+
+    // WHY: the old folder is removed only once nothing is left, so a failed move never loses a document.
+    private func removeLegacyStorageFolderIfEmpty(_ legacyFolderURL: URL) {
+        guard let remainingFileNames = try? FileManager.default.contentsOfDirectory(atPath: legacyFolderURL.path) else { return }
+        guard remainingFileNames.isEmpty else { return }
+        try? FileManager.default.removeItem(at: legacyFolderURL)
     }
 }

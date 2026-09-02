@@ -51,8 +51,14 @@ public struct PDFLibraryView<Model: PDFLibraryViewModel, Detail: View>: View {
     private var selectedItemIdentifier: Binding<UUID?> {
         Binding(
             get: { model.selectedItemIdentifier },
-            set: { model.send(.libraryItemSelected($0)) }
+            set: { sendAfterViewUpdate(.libraryItemSelected($0)) }
         )
+    }
+
+    // WHY: SwiftUI writes list selection during a view update, so mutating the store must wait for the next
+    // main-actor turn; sending it inline publishes observable changes from inside that update.
+    private func sendAfterViewUpdate(_ event: PDFLibraryEvent) {
+        Task { @MainActor in model.send(event) }
     }
 
     private var fileImporterPresentation: Binding<Bool> {

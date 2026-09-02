@@ -43,7 +43,7 @@ struct PDFInquiryEntry: Identifiable, Equatable, Sendable {
     let id: UUID
     let author: Author
     let text: String
-    let pageRange: PDFPageRange
+    let pageRange: PDFPageRange?
     let citedPageIndices: [Int]
 }
 
@@ -66,7 +66,7 @@ enum PDFInquiryFailure: Equatable, Sendable {
 
 enum PDFInquiryPhase: Equatable, Sendable {
     case idle
-    case extracting(PDFPageRange)
-    case generating(PDFPageRange)
+    case extracting(PDFPageRange?)
+    case generating(PDFPageRange?)
     case failed(PDFInquiryFailure)
 }

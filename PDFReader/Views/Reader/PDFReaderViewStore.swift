@@ -5,6 +5,7 @@ import PDFReaderFeature
 @MainActor
 final class PDFReaderViewStore: PDFReaderViewModel {
     @Published private(set) var documentURL: URL? = nil
+    @Published private(set) var isDocumentFileMissing: Bool = false
     @Published private(set) var initialPosition: PDFReaderPosition? = nil
     @Published private(set) var isNightModeEnabled: Bool = false
     @Published private(set) var isAllHighlightsRemovalPending: Bool = false
@@ -42,7 +43,7 @@ final class PDFReaderViewStore: PDFReaderViewModel {
         case .bookmarkNavigationHandled: setBookmarkNavigationPageIndex(nil)
         case .positionChanged(let position): appStore.saveReadingPosition(makeDomainPosition(position))
         case .assistantSummaryRequested(let startPageNumber, let endPageNumber): requestAssistantSummary(startPageNumber: startPageNumber, endPageNumber: endPageNumber)
-        case .assistantQuestionSubmitted(let question, let startPageNumber, let endPageNumber): submitAssistantQuestion(question, startPageNumber: startPageNumber, endPageNumber: endPageNumber)
+        case .assistantQuestionSubmitted(let question, let startPageNumber, let endPageNumber, let usesSelectedPages): submitAssistantQuestion(question, startPageNumber: startPageNumber, endPageNumber: endPageNumber, usesSelectedPages: usesSelectedPages)
         case .assistantRetryRequested: appStore.retryPDFInquiry()
         case .assistantGenerationCancelled: appStore.cancelPDFInquiry()
         case .assistantAvailabilityRefreshRequested: appStore.refreshPDFInquiryAvailability()
@@ -60,6 +61,7 @@ final class PDFReaderViewStore: PDFReaderViewModel {
     // WHY: the state parameter prevents the subscriber from reading a different app-state moment.
     private func recompute(from appState: AppState) {
         documentURL = appState.selectedPDFFileURL
+        isDocumentFileMissing = appState.isSelectedPDFFileMissing
         initialPosition = makeReaderPosition(appState: appState)
         isNightModeEnabled = appState.isNightModeEnabled
         isAllHighlightsRemovalPending = appState.isAllHighlightsRemovalPending
@@ -155,8 +157,9 @@ final class PDFReaderViewStore: PDFReaderViewModel {
     }
 
     // WHY: free-form questions and their selected scope cross into domain behavior together.
-    private func submitAssistantQuestion(_ question: String, startPageNumber: Int, endPageNumber: Int) {
-        appStore.answerPDFQuestion(question, pageRange: makePDFPageRange(startPageNumber: startPageNumber, endPageNumber: endPageNumber))
+    private func submitAssistantQuestion(_ question: String, startPageNumber: Int, endPageNumber: Int, usesSelectedPages: Bool) {
+        let pageRange: PDFPageRange? = usesSelectedPages ? makePDFPageRange(startPageNumber: startPageNumber, endPageNumber: endPageNumber) : nil
+        appStore.answerPDFQuestion(question, pageRange: pageRange)
     }
 
     // WHY: one conversion prevents one-based display values from leaking into PDFKit-facing domain state.
@@ -170,7 +173,7 @@ final class PDFReaderViewStore: PDFReaderViewModel {
             id: entry.id,
             author: entry.author == .person ? .person : .assistant,
             text: entry.text,
-            pageRangeDescription: entry.pageRange.pageNumberDescription,
+            pageRangeDescription: entry.pageRange?.pageNumberDescription ?? "General question",
             referencePageNumbers: entry.citedPageIndices.map { $0 + 1 }
         )
     }
@@ -200,8 +203,8 @@ final class PDFReaderViewStore: PDFReaderViewModel {
     private func makeAssistantStatusDescription(_ phase: PDFInquiryPhase) -> String? {
         switch phase {
         case .idle: return nil
-        case .extracting(let pageRange): return "Reading \(pageRange.pageNumberDescription)…"
-        case .generating(let pageRange): return "Analyzing \(pageRange.pageNumberDescription)…"
+        case .extracting(let pageRange): return pageRange.map { "Reading \($0.pageNumberDescription)…" } ?? "Preparing answer…"
+        case .generating(let pageRange): return pageRange.map { "Analyzing \($0.pageNumberDescription)…" } ?? "Preparing answer…"
         case .failed(let failure): return makeAssistantFailureDescription(failure)
         }
     }

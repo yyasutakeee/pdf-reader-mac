@@ -4,6 +4,7 @@ struct AppState {
     var importedPDFFiles: [ImportedPDFFile] = []
     var selectedPDFFileIdentifier: UUID? = nil
     var selectedPDFFileURL: URL? = nil
+    var isSelectedPDFFileMissing: Bool = false
     var isFileImporterPresented: Bool = false
     var isNightModeEnabled: Bool = false
     var isAllHighlightsRemovalPending: Bool = false

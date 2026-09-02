@@ -9,6 +9,8 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
     @State private var assistantStartPageNumber: Int = 1
     @State private var assistantEndPageNumber: Int = 1
     @State private var assistantQuestion: String = ""
+    @State private var isAssistantSparklesAnimating: Bool = false
+    @State private var isUsingSelectedPages: Bool = true
 
     public init(model: Model) {
         self.model = model
@@ -40,6 +42,8 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
                 onEvent: model.send
             )
             .overlay { nightModeOverlay }
+        } else if model.isDocumentFileMissing {
+            missingDocumentPlaceholder
         } else {
             noSelectionPlaceholder
         }
@@ -79,7 +83,7 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
     }
 
     private var assistantInspectorButton: some View {
-        Button(action: { presentInspector(section: .assistant) }) {
+        Button(action: toggleAssistantInspector) {
             Label("Ask AI", systemImage: "sparkles")
         }
         .help("Ask AI About This PDF")
@@ -153,7 +157,7 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
             .onChange(of: assistantEndPageNumber) {
                 assistantStartPageNumber = min(assistantStartPageNumber, assistantEndPageNumber)
             }
-            Button("Summarize Pages", systemImage: "text.document") { requestAssistantSummary() }
+            Button("要約する", systemImage: "text.document") { requestAssistantSummary() }
                 .disabled(isAssistantActionDisabled)
         }
         .padding()
@@ -230,6 +234,8 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
             if let statusDescription: String = model.assistantStatusDescription {
                 makeAssistantStatus(statusDescription)
             }
+            Toggle("ページを参照", isOn: $isUsingSelectedPages)
+                .toggleStyle(.switch)
             HStack(alignment: .bottom) {
                 TextField("Ask about selected pages", text: $assistantQuestion, axis: .vertical)
                     .lineLimit(1...5)
@@ -245,7 +251,7 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
 
     private func makeAssistantStatus(_ description: String) -> some View {
         HStack(spacing: 8) {
-            if model.isAssistantGenerating { ProgressView().controlSize(.small) }
+            if model.isAssistantGenerating { assistantSparklesIndicator }
             Text(description)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -255,6 +261,17 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
                     .buttonStyle(.borderless)
             }
         }
+    }
+
+    private var assistantSparklesIndicator: some View {
+        Image(systemName: "sparkles")
+            .font(.caption)
+            .foregroundStyle(.tint)
+            .scaleEffect(isAssistantSparklesAnimating ? 1.12 : 0.88)
+            .opacity(isAssistantSparklesAnimating ? 1 : 0.45)
+            .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: isAssistantSparklesAnimating)
+            .onAppear { isAssistantSparklesAnimating = true }
+            .onDisappear { isAssistantSparklesAnimating = false }
     }
 
     private var submitAssistantButton: some View {
@@ -298,6 +315,15 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
         isShowingReaderInspector = true
     }
 
+    // WHY: the existing AI toolbar control provides one consistent entry point for opening and collapsing its inspector.
+    private func toggleAssistantInspector() {
+        guard isShowingReaderInspector && selectedInspectorSection == .assistant else {
+            presentInspector(section: .assistant)
+            return
+        }
+        isShowingReaderInspector = false
+    }
+
     private func synchronizeAssistantPageRange() {
         let pageNumber: Int = min(max((model.currentPageIndex ?? 0) + 1, 1), max(model.totalPageCount, 1))
         assistantStartPageNumber = pageNumber
@@ -317,7 +343,8 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
         model.send(.assistantQuestionSubmitted(
             question: question,
             startPageNumber: assistantStartPageNumber,
-            endPageNumber: assistantEndPageNumber
+            endPageNumber: assistantEndPageNumber,
+            usesSelectedPages: isUsingSelectedPages
         ))
         assistantQuestion = ""
     }
@@ -377,6 +404,22 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
             Text("Select a PDF to read")
                 .font(.headline)
                 .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // WHY: a library entry whose file was moved or deleted must say so instead of looking unselected.
+    private var missingDocumentPlaceholder: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+            Text("PDF file not found")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text("The file was moved or deleted. Import it again.")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

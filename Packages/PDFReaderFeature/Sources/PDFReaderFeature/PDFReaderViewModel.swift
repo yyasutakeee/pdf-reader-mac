@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 public protocol PDFReaderViewModel: ObservableObject {
     var documentURL: URL? { get }
+    var isDocumentFileMissing: Bool { get }
     var initialPosition: PDFReaderPosition? { get }
     var isNightModeEnabled: Bool { get }
     var isAllHighlightsRemovalPending: Bool { get }
