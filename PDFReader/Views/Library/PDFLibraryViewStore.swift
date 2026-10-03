@@ -1,4 +1,3 @@
-import AppKit
 import Combine
 import Foundation
 import PDFLibraryFeature
@@ -9,36 +8,31 @@ final class PDFLibraryViewStore: PDFLibraryViewModel {
     @Published private(set) var selectedItemIdentifier: UUID? = nil
     @Published private(set) var isFileImporterPresented: Bool = false
 
-    private let appStore: AppStore
+    private let store: Store<AppState, AppAction, AppEnvironment>
     private var storeSubscriptions: Set<AnyCancellable> = []
 
-    init(appStore: AppStore) {
-        self.appStore = appStore
+    // WHY: the adapter subscribes once so package display values always derive from completed root snapshots.
+    init(store: Store<AppState, AppAction, AppEnvironment>) {
+        self.store = store
         observeAppStateChanges()
-        recompute(from: appStore.state)
+        recompute(from: store.state)
     }
 
     // WHY: package events are translated here so the UI package never imports the app domain.
     func send(_ event: PDFLibraryEvent) {
         switch event {
-        case .importButtonTapped: appStore.presentFileImporter()
-        case .fileImporterDismissed: appStore.dismissFileImporter()
-        case .pdfFileSelected(let URL): appStore.importPDFFile(from: URL)
-        case .libraryItemSelected(let identifier): appStore.selectPDFFile(identifier: identifier)
-        case .libraryItemRevealRequested(let identifier): revealPDFFileInFinder(identifier: identifier)
-        case .libraryItemRemovalRequested(let identifier): appStore.removeImportedPDFFile(identifier: identifier)
+        case .importButtonTapped: store.dispatch(.fileImporterPresentationRequested)
+        case .fileImporterDismissed: store.dispatch(.fileImporterDismissed)
+        case .pdfFileSelected(let url): store.dispatch(.pdfFileImportRequested(url))
+        case .libraryItemSelected(let identifier): store.dispatch(.pdfFileSelectionChanged(identifier))
+        case .libraryItemRevealRequested(let identifier): store.dispatch(.importedPDFFileRevealRequested(identifier))
+        case .libraryItemRemovalRequested(let identifier): store.dispatch(.importedPDFFileRemovalRequested(identifier))
         }
-    }
-
-    // WHY: Finder presentation is app-layer behavior and must not leak into the domain or UI package contract.
-    private func revealPDFFileInFinder(identifier: UUID) {
-        guard let fileURL: URL = appStore.findStoredPDFFileURL(identifier: identifier) else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 
     // WHY: didChange supplies the post-mutation value required for an accurate display snapshot.
     private func observeAppStateChanges() {
-        appStore.didChange
+        store.didChange
             .sink { [weak self] appState in self?.recompute(from: appState) }
             .store(in: &storeSubscriptions)
     }

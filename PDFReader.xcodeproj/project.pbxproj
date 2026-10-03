@@ -8,7 +8,18 @@
 
 /* Begin PBXFileReference section */
 		211854EF2F9393C90003EA7F /* PDFReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PDFReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000000000000000000001 /* PDFReaderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PDFReaderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		B2000000000000000000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 211854E72F9393C90003EA7F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 211854EE2F9393C90003EA7F;
+			remoteInfo = PDFReader;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* PDFLibraryFeature in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000011 /* PDFLibraryFeature */; };
@@ -20,6 +31,11 @@
 		211854F12F9393C90003EA7F /* PDFReader */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PDFReader;
+			sourceTree = "<group>";
+		};
+		B20000000000000000000002 /* PDFReaderTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PDFReaderTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -35,6 +51,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B20000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -42,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				211854F12F9393C90003EA7F /* PDFReader */,
+				B20000000000000000000002 /* PDFReaderTests */,
 				211854F02F9393C90003EA7F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -50,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				211854EF2F9393C90003EA7F /* PDFReader.app */,
+				B20000000000000000000001 /* PDFReaderTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -82,6 +107,29 @@
 			productReference = 211854EF2F9393C90003EA7F /* PDFReader.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B20000000000000000000006 /* PDFReaderTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B20000000000000000000009 /* Build configuration list for PBXNativeTarget "PDFReaderTests" */;
+			buildPhases = (
+				B20000000000000000000005 /* Sources */,
+				B20000000000000000000003 /* Frameworks */,
+				B20000000000000000000004 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B2000000000000000000000B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B20000000000000000000002 /* PDFReaderTests */,
+			);
+			name = PDFReaderTests;
+			packageProductDependencies = (
+			);
+			productName = PDFReaderTests;
+			productReference = B20000000000000000000001 /* PDFReaderTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -94,6 +142,10 @@
 				TargetAttributes = {
 					211854EE2F9393C90003EA7F = {
 						CreatedOnToolsVersion = 26.4.1;
+					};
+					B20000000000000000000006 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 211854EE2F9393C90003EA7F;
 					};
 				};
 			};
@@ -117,12 +169,20 @@
 			projectRoot = "";
 			targets = (
 				211854EE2F9393C90003EA7F /* PDFReader */,
+				B20000000000000000000006 /* PDFReaderTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		211854ED2F9393C90003EA7F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B20000000000000000000004 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -139,7 +199,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B20000000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B2000000000000000000000B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 211854EE2F9393C90003EA7F /* PDFReader */;
+			targetProxy = B2000000000000000000000A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		211854F82F9393CA0003EA7F /* Debug */ = {
@@ -328,6 +403,44 @@
 			};
 			name = Release;
 		};
+		B20000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YR53SS8TJ6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.3;
+				PRODUCT_BUNDLE_IDENTIFIER = yasutakeapps.PDFReaderTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFReader.app/Contents/MacOS/PDFReader";
+			};
+			name = Debug;
+		};
+		B20000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = YR53SS8TJ6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.3;
+				PRODUCT_BUNDLE_IDENTIFIER = yasutakeapps.PDFReaderTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PDFReader.app/Contents/MacOS/PDFReader";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -345,6 +458,15 @@
 			buildConfigurations = (
 				211854FB2F9393CA0003EA7F /* Debug */,
 				211854FC2F9393CA0003EA7F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B20000000000000000000009 /* Build configuration list for PBXNativeTarget "PDFReaderTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B20000000000000000000007 /* Debug */,
+				B20000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

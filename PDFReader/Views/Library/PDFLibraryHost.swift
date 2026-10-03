@@ -3,14 +3,15 @@ import SwiftUI
 
 struct PDFLibraryHost: View {
     @StateObject private var viewStore: PDFLibraryViewStore
-    private let appStore: AppStore
+    private let store: Store<AppState, AppAction, AppEnvironment>
 
-    init(appStore: AppStore) {
-        self.appStore = appStore
-        _viewStore = StateObject(wrappedValue: PDFLibraryViewStore(appStore: appStore))
+    // WHY: this wrapper owns the package adapter for the lifetime of the library screen.
+    init(store: Store<AppState, AppAction, AppEnvironment>) {
+        self.store = store
+        _viewStore = StateObject(wrappedValue: PDFLibraryViewStore(store: store))
     }
 
     var body: some View {
-        PDFLibraryView(model: viewStore) { PDFReaderHost(appStore: appStore) }
+        PDFLibraryView(model: viewStore) { PDFReaderHost(store: store) }
     }
 }

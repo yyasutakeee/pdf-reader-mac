@@ -1,11 +1,12 @@
 import SwiftUI
 
 struct AppRootView: View {
-    @ObservedObject var appStore: AppStore
+    @ObservedObject var store: Store<AppState, AppAction, AppEnvironment>
 
     var body: some View {
-        PDFLibraryHost(appStore: appStore)
-            .preferredColorScheme(makeColorScheme(appearanceTheme: appStore.state.appearanceTheme))
+        PDFLibraryHost(store: store)
+            .preferredColorScheme(makeColorScheme(appearanceTheme: store.state.appearanceTheme))
+            .task { store.dispatch(.appStarted) }
     }
 
     // WHY: SwiftUI's ColorScheme remains in the view layer instead of leaking into domain state.

@@ -57,7 +57,7 @@ enum PDFInquiryAvailability: Equatable, Sendable {
     case unavailable
 }
 
-enum PDFInquiryFailure: Equatable, Sendable {
+enum PDFInquiryFailure: Error, Equatable, Sendable {
     case documentUnavailable
     case invalidPageRange
     case noReadableText

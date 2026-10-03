@@ -19,41 +19,42 @@ final class PDFReaderViewStore: PDFReaderViewModel {
     @Published private(set) var isAssistantGenerating: Bool = false
     @Published private(set) var assistantStatusDescription: String? = nil
 
-    private let appStore: AppStore
+    private let store: Store<AppState, AppAction, AppEnvironment>
     private var storeSubscriptions: Set<AnyCancellable> = []
     private var selectedPDFFileIdentifier: UUID? = nil
 
-    init(appStore: AppStore) {
-        self.appStore = appStore
+    // WHY: the adapter retains one root-store subscription across the reader package's lifetime.
+    init(store: Store<AppState, AppAction, AppEnvironment>) {
+        self.store = store
         observeAppStateChanges()
-        recompute(from: appStore.state)
+        recompute(from: store.state)
     }
 
     // WHY: reader gestures become domain actions only at the app-owned package boundary.
     func send(_ event: PDFReaderEvent) {
         switch event {
-        case .nightModeToggled: appStore.toggleNightMode()
-        case .allHighlightsRemovalRequested: appStore.requestAllHighlightsRemoval()
-        case .allHighlightsRemovalHandled: appStore.finishAllHighlightsRemoval()
+        case .nightModeToggled: store.dispatch(.nightModeToggled)
+        case .allHighlightsRemovalRequested: store.dispatch(.allHighlightsRemovalRequested)
+        case .allHighlightsRemovalHandled: store.dispatch(.allHighlightsRemovalHandled)
         case .currentPageChanged(let pageIndex): setCurrentPageIndex(pageIndex)
         case .currentPageBookmarkToggled: toggleCurrentPageBookmark()
         case .bookmarkSelected(let pageIndex): setBookmarkNavigationPageIndex(pageIndex)
-        case .bookmarkRemoved(let pageIndex): appStore.removeBookmark(pageIndex: pageIndex)
-        case .bookmarkCommentChanged(let pageIndex, let comment): appStore.updateBookmarkComment(pageIndex: pageIndex, comment: comment)
+        case .bookmarkRemoved(let pageIndex): store.dispatch(.bookmarkRemovalRequested(pageIndex: pageIndex))
+        case .bookmarkCommentChanged(let pageIndex, let comment): store.dispatch(.bookmarkCommentChanged(pageIndex: pageIndex, comment: comment))
         case .bookmarkNavigationHandled: setBookmarkNavigationPageIndex(nil)
-        case .positionChanged(let position): appStore.saveReadingPosition(makeDomainPosition(position))
+        case .positionChanged(let position): store.dispatch(.readingPositionChanged(makeDomainPosition(position)))
         case .assistantSummaryRequested(let startPageNumber, let endPageNumber): requestAssistantSummary(startPageNumber: startPageNumber, endPageNumber: endPageNumber)
         case .assistantQuestionSubmitted(let question, let startPageNumber, let endPageNumber, let usesSelectedPages): submitAssistantQuestion(question, startPageNumber: startPageNumber, endPageNumber: endPageNumber, usesSelectedPages: usesSelectedPages)
-        case .assistantRetryRequested: appStore.retryPDFInquiry()
-        case .assistantGenerationCancelled: appStore.cancelPDFInquiry()
-        case .assistantAvailabilityRefreshRequested: appStore.refreshPDFInquiryAvailability()
+        case .assistantRetryRequested: store.dispatch(.pdfInquiryRetryRequested)
+        case .assistantGenerationCancelled: store.dispatch(.pdfInquiryCancellationRequested)
+        case .assistantAvailabilityRefreshRequested: store.dispatch(.pdfInquiryAvailabilityRefreshRequested)
         case .assistantReferenceSelected(let pageNumber): setBookmarkNavigationPageIndex(pageNumber - 1)
         }
     }
 
     // WHY: didChange supplies the post-mutation state needed by this manual Combine bridge.
     private func observeAppStateChanges() {
-        appStore.didChange
+        store.didChange
             .sink { [weak self] appState in self?.recompute(from: appState) }
             .store(in: &storeSubscriptions)
     }
@@ -97,7 +98,7 @@ final class PDFReaderViewStore: PDFReaderViewModel {
     // WHY: the current page is required before bookmark intent can be forwarded to persistent domain state.
     private func toggleCurrentPageBookmark() {
         guard let currentPageIndex else { return }
-        appStore.toggleBookmark(pageIndex: currentPageIndex)
+        store.dispatch(.bookmarkToggled(pageIndex: currentPageIndex))
     }
 
     // WHY: the selected document's persisted pages become display-only inspector rows at the app boundary.
@@ -153,13 +154,13 @@ final class PDFReaderViewStore: PDFReaderViewModel {
 
     // WHY: presentation page numbers are converted to zero-based domain indices at the app boundary.
     private func requestAssistantSummary(startPageNumber: Int, endPageNumber: Int) {
-        appStore.generatePDFSummary(pageRange: makePDFPageRange(startPageNumber: startPageNumber, endPageNumber: endPageNumber))
+        store.dispatch(.pdfSummaryRequested(makePDFPageRange(startPageNumber: startPageNumber, endPageNumber: endPageNumber)))
     }
 
     // WHY: free-form questions and their selected scope cross into domain behavior together.
     private func submitAssistantQuestion(_ question: String, startPageNumber: Int, endPageNumber: Int, usesSelectedPages: Bool) {
         let pageRange: PDFPageRange? = usesSelectedPages ? makePDFPageRange(startPageNumber: startPageNumber, endPageNumber: endPageNumber) : nil
-        appStore.answerPDFQuestion(question, pageRange: pageRange)
+        store.dispatch(.pdfQuestionSubmitted(question: question, pageRange: pageRange))
     }
 
     // WHY: one conversion prevents one-based display values from leaking into PDFKit-facing domain state.

@@ -1,6 +1,13 @@
 import Foundation
 
-struct AppState {
+enum AppInitializationPhase: Equatable {
+    case notStarted
+    case loading
+    case loaded
+}
+
+struct AppState: Equatable {
+    var initializationPhase: AppInitializationPhase = .notStarted
     var importedPDFFiles: [ImportedPDFFile] = []
     var selectedPDFFileIdentifier: UUID? = nil
     var selectedPDFFileURL: URL? = nil

@@ -10,13 +10,14 @@ final class SettingsViewStore: SettingsViewModel {
     @Published private(set) var codexExecutablePath: String = ""
     @Published private(set) var showsCodexExecutablePath: Bool = false
 
-    private let appStore: AppStore
+    private let store: Store<AppState, AppAction, AppEnvironment>
     private var storeSubscriptions: Set<AnyCancellable> = []
 
-    init(appStore: AppStore) {
-        self.appStore = appStore
+    // WHY: the adapter derives all settings display values from one completed root-state snapshot.
+    init(store: Store<AppState, AppAction, AppEnvironment>) {
+        self.store = store
         observeAppStateChanges()
-        recompute(from: appStore.state)
+        recompute(from: store.state)
     }
 
     // WHY: the settings package sends a string identifier so it never imports the domain preference type.
@@ -24,13 +25,13 @@ final class SettingsViewStore: SettingsViewModel {
         switch event {
         case .appearanceSelected(let identifier): selectAppearanceTheme(identifier: identifier)
         case .pdfAnswerProviderSelected(let identifier): selectPDFAnswerProvider(identifier: identifier)
-        case .codexExecutablePathChanged(let executablePath): appStore.updateCodexExecutablePath(executablePath)
+        case .codexExecutablePathChanged(let executablePath): store.dispatch(.codexExecutablePathChanged(executablePath))
         }
     }
 
     // WHY: didChange carries the selected post-mutation preference without a stale store read.
     private func observeAppStateChanges() {
-        appStore.didChange
+        store.didChange
             .sink { [weak self] appState in self?.recompute(from: appState) }
             .store(in: &storeSubscriptions)
     }
@@ -53,7 +54,7 @@ final class SettingsViewStore: SettingsViewModel {
     // WHY: invalid identifiers from UI state are ignored instead of corrupting the persisted preference.
     private func selectAppearanceTheme(identifier: String) {
         guard let appearanceTheme: AppearanceTheme = AppearanceTheme(rawValue: identifier) else { return }
-        appStore.selectAppearanceTheme(appearanceTheme)
+        store.dispatch(.appearanceSelected(appearanceTheme))
     }
 
     // WHY: domain provider values are converted into package-owned display data at the app boundary.
@@ -72,6 +73,6 @@ final class SettingsViewStore: SettingsViewModel {
     // WHY: invalid package identifiers are rejected before they can become persisted domain state.
     private func selectPDFAnswerProvider(identifier: String) {
         guard let provider: PDFAnswerProvider = PDFAnswerProvider(rawValue: identifier) else { return }
-        appStore.selectPDFAnswerProvider(provider)
+        store.dispatch(.pdfAnswerProviderSelected(provider))
     }
 }
