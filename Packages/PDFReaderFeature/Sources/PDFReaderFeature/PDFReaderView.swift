@@ -83,14 +83,14 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
     }
 
     private var assistantInspectorButton: some View {
-        Button(action: toggleAssistantInspector) {
+        Button(action: { toggleInspector(section: .assistant) }) {
             Label("Ask AI", systemImage: "sparkles")
         }
         .help("Ask AI About This PDF")
     }
 
     private var bookmarksInspectorButton: some View {
-        Button(action: { presentInspector(section: .bookmarks) }) {
+        Button(action: { toggleInspector(section: .bookmarks) }) {
             Label("Bookmarks", systemImage: "sidebar.right")
         }
         .help("Show Bookmarks")
@@ -315,10 +315,10 @@ public struct PDFReaderView<Model: PDFReaderViewModel>: View {
         isShowingReaderInspector = true
     }
 
-    // WHY: the existing AI toolbar control provides one consistent entry point for opening and collapsing its inspector.
-    private func toggleAssistantInspector() {
-        guard isShowingReaderInspector && selectedInspectorSection == .assistant else {
-            presentInspector(section: .assistant)
+    // WHY: each toolbar control must close its active inspector on a second click while still switching sections directly.
+    private func toggleInspector(section: InspectorSection) {
+        guard isShowingReaderInspector && selectedInspectorSection == section else {
+            presentInspector(section: section)
             return
         }
         isShowingReaderInspector = false
